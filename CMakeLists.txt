@@ -14,4 +14,4 @@ project(note-section-test
 	LANGUAGES CXX)
 
 add_subdirectory(module)
-#add_subdirectory(inspector)
+add_subdirectory(inspector)

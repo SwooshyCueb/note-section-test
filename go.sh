@@ -12,7 +12,7 @@ for compiler_name in g++ clang++; do
 		pushd "${build_dir}"
 		cmake \
 			-DCMAKE_COLOR_MAKEFILE=ON \
-			-DCMAKE_VERBOSE_MAKEFILE=ON \
+			-DCMAKE_VERBOSE_MAKEFILE=OFF \
 			-DCMAKE_BUILD_TYPE=Debug \
 			-DCMAKE_CXX_COMPILER="${compiler_name}" \
 			-DCMAKE_MODULE_LINKER_FLAGS_DEBUG="-rdynamic -Wl,--export-dynamic" \
