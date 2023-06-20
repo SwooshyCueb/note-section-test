@@ -1,7 +1,9 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <string_view>
 #include <vector>
 
 #include <elf.h>
@@ -115,12 +117,71 @@ int main(int _argc, char *_argv[]){
 	std::vector<char> e_strtbl_vec(e_strtsz);
 	lib.read(e_strtbl_vec.data(), e_strtsz);
 
-	for (std::uint64_t sh_idx = 0; sh_idx < e_shnum; sh_idx++) {
+	for (std::uint64_t sh_idx = 1; sh_idx < e_shnum; sh_idx++) {
 		// seek to section header
 		lib.seekg(e_shoff + (sh_idx * e_shentsize));
-		std::uint32_t str_off{};
-		lib.read(reinterpret_cast<char*>(&str_off), sizeof(str_off));
-		std::cout << &(e_strtbl_vec.data()[str_off]) << std::endl;
+
+		std::uint32_t sh_name{};
+		std::uint32_t sh_type{};
+		std::uint64_t sh_offset{};
+		std::uint64_t sh_size{};
+		std::uint64_t sh_addralign{};
+
+		std::string_view s_name{};
+		
+		if (ei_class == ELFCLASS32) {
+			Elf32_Shdr s_hdr_in{};
+			lib.read(reinterpret_cast<char*>(&s_hdr_in), sizeof(s_hdr_in));
+
+			sh_type = s_hdr_in.sh_type;
+			if ((sh_type != SHT_NOTE) && (sh_type != SHT_PROGBITS)) {
+				continue;
+			}
+			sh_name = s_hdr_in.sh_name;
+			s_name = std::string_view(&e_strtbl_vec.data()[sh_name]);
+
+			sh_offset = s_hdr_in.sh_offset;
+			sh_size = s_hdr_in.sh_size;
+			sh_addralign = s_hdr_in.sh_addralign;
+		}
+		else {
+			Elf64_Shdr s_hdr_in{};
+			lib.read(reinterpret_cast<char*>(&s_hdr_in), sizeof(s_hdr_in));
+
+			sh_type = s_hdr_in.sh_type;
+			if ((sh_type != SHT_NOTE) && (sh_type != SHT_PROGBITS)) {
+				continue;
+			}
+			
+			sh_name = s_hdr_in.sh_name;
+			s_name = std::string_view(&e_strtbl_vec.data()[sh_name]);
+			if (!s_name.starts_with(".note.irods")) {
+				continue;
+			}
+
+			sh_offset = s_hdr_in.sh_offset;
+			sh_size = s_hdr_in.sh_size;
+			sh_addralign = s_hdr_in.sh_addralign;
+		}
+
+		std::cout << "\n\"" << s_name << "\":\n";
+		std::cout << "sh_type: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_type << '\n';
+		std::cout << "sh_offset: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_offset << '\n';
+		std::cout << "sh_size: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_size << '\n';
+		std::cout << "sh_addralign: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_addralign << '\n';
+
+		lib.seekg(sh_offset);
+		std::vector<std::uint8_t> s_contents(sh_size);
+		lib.read(reinterpret_cast<char*>(s_contents.data()), sh_size);
+
+		for (std::uint64_t s_idx_row = 0; s_idx_row < sh_size; s_idx_row+=16) {
+			for (std::uint64_t s_idx = s_idx_row; s_idx < sh_size; s_idx++) {
+				std::cout << std::setw(2) << std::setfill('0') << static_cast<uint32_t>(s_contents[s_idx]) << " ";
+			}
+			std::cout << '\n';
+		}
+		std::cout << std::flush;
+
 	}
 
 	return 0;
