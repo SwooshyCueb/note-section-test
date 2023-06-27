@@ -139,6 +139,9 @@ int main(int _argc, char *_argv[]){
 			}
 			sh_name = s_hdr_in.sh_name;
 			s_name = std::string_view(&e_strtbl_vec.data()[sh_name]);
+			if (!s_name.starts_with(".note.irods")) {
+				continue;
+			}
 
 			sh_offset = s_hdr_in.sh_offset;
 			sh_size = s_hdr_in.sh_size;
