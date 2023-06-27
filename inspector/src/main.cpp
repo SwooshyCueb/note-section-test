@@ -61,6 +61,7 @@ int main(int _argc, char *_argv[]){
 
 	if (e_shoff == 0) {
 		std::cerr << "ELF does not contain section table" << std::endl;
+		return EX_DATAERR;
 	}
 
 	// seek to section table
