@@ -6,7 +6,8 @@ add_library(note-section-module
 target_link_options(note-section-module
 	PRIVATE
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/note_section.ld"
-)
+	"-Wl,-z,global")
+
 set_property(TARGET
 	note-section-module
 	APPEND

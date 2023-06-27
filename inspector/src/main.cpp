@@ -127,6 +127,7 @@ int main(int _argc, char *_argv[]){
 		std::uint64_t sh_offset{};
 		std::uint64_t sh_size{};
 		std::uint64_t sh_addralign{};
+		std::uint64_t sh_entsize{};
 
 		std::string_view s_name{};
 		
@@ -135,58 +136,77 @@ int main(int _argc, char *_argv[]){
 			lib.read(reinterpret_cast<char*>(&s_hdr_in), sizeof(s_hdr_in));
 
 			sh_type = s_hdr_in.sh_type;
-			if ((sh_type != SHT_NOTE) && (sh_type != SHT_PROGBITS)) {
+			if (sh_type != SHT_DYNAMIC) {
 				continue;
 			}
 			sh_name = s_hdr_in.sh_name;
 			s_name = std::string_view(&e_strtbl_vec.data()[sh_name]);
-			if (!s_name.starts_with(".note.irods")) {
+			if (!s_name.starts_with(".dynamic")) {
 				continue;
 			}
 
 			sh_offset = s_hdr_in.sh_offset;
 			sh_size = s_hdr_in.sh_size;
 			sh_addralign = s_hdr_in.sh_addralign;
+			sh_entsize = s_hdr_in.sh_entsize;
 		}
 		else {
 			Elf64_Shdr s_hdr_in{};
 			lib.read(reinterpret_cast<char*>(&s_hdr_in), sizeof(s_hdr_in));
 
 			sh_type = s_hdr_in.sh_type;
-			if ((sh_type != SHT_NOTE) && (sh_type != SHT_PROGBITS)) {
+			if (sh_type != SHT_DYNAMIC) {
 				continue;
 			}
-			
 			sh_name = s_hdr_in.sh_name;
 			s_name = std::string_view(&e_strtbl_vec.data()[sh_name]);
-			if (!s_name.starts_with(".note.irods")) {
+			if (!s_name.starts_with(".dynamic")) {
 				continue;
 			}
 
 			sh_offset = s_hdr_in.sh_offset;
 			sh_size = s_hdr_in.sh_size;
 			sh_addralign = s_hdr_in.sh_addralign;
+			sh_entsize = s_hdr_in.sh_entsize;
 		}
 
-		std::cout << "\n\"" << s_name << "\":\n";
-		std::cout << "sh_type: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_type << '\n';
-		std::cout << "sh_offset: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_offset << '\n';
-		std::cout << "sh_size: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_size << '\n';
-		std::cout << "sh_addralign: 0x" << std::hex << std::setw(16) << std::setfill('0') << sh_addralign << '\n';
+		const std::uint64_t sh_offset_end = sh_offset + sh_size;
 
-		lib.seekg(sh_offset);
-		std::vector<std::uint8_t> s_contents(sh_size);
-		lib.read(reinterpret_cast<char*>(s_contents.data()), sh_size);
+		for (std::uint64_t de_off = sh_offset; de_off < sh_offset_end; de_off += sh_entsize) {
+			// seek to dynamic entry
+			lib.seekg(de_off);
+			
+			if (ei_class == ELFCLASS32) {
+				Elf32_Dyn de_in{};
+				lib.read(reinterpret_cast<char*>(&de_in), sizeof(de_in));
 
-		for (std::uint64_t s_idx_row = 0; s_idx_row < sh_size; s_idx_row+=16) {
-			for (std::uint64_t s_idx = s_idx_row; s_idx < sh_size; s_idx++) {
-				std::cout << std::setw(2) << std::setfill('0') << static_cast<uint32_t>(s_contents[s_idx]) << " ";
+				if (de_in.d_tag != DT_FLAGS_1) {
+					continue;
+				}
+
+				std::cout << "Found DT_FLAGS_1" << std::endl;
+
+				if (de_in.d_un.d_val & DF_1_GLOBAL) {
+					std::cout << "Found DF_1_GLOBAL" << std::endl;
+				}
 			}
-			std::cout << '\n';
+			else {
+				Elf64_Dyn de_in{};
+				lib.read(reinterpret_cast<char*>(&de_in), sizeof(de_in));
+
+				if (de_in.d_tag != DT_FLAGS_1) {
+					continue;
+				}
+
+				std::cout << "Found DT_FLAGS_1" << std::endl;
+
+				if (de_in.d_un.d_val & DF_1_GLOBAL) {
+					std::cout << "Found DF_1_GLOBAL" << std::endl;
+				}
+			}
 		}
-		std::cout << std::flush;
 
 	}
-
+		
 	return 0;
 }
